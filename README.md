@@ -9,6 +9,63 @@ no browser anywhere in the request path.
 
 **Stack:** Node.js, TypeScript, Express 5, MongoDB (Mongoose), Redis, Axios.
 
+**Live deployment:** `https://api.santoshdev.win`
+
+## Try it live
+
+A demo `API_KEY` has been shared separately via email — replace
+`YOUR_API_KEY` below with that value. It's a temporary demo credential;
+happy to issue a fresh one if it's rotated or expired by the time you try
+this.
+
+```bash
+# 1. Health check — no API key required
+curl https://api.santoshdev.win/health
+# {"status":"ok","linkedinSession":"valid"}
+
+# 2. Request a profile scrape
+curl -X POST https://api.santoshdev.win/api/v1/profile \
+  -H "Content-Type: application/json" \
+  -H "x-api-key: YOUR_API_KEY" \
+  -d '{"url":"https://www.linkedin.com/in/santoshkum"}'
+# Cache miss -> 202 { "status": "pending", "jobId": "<uuid>" }
+# Cache hit  -> 200 { "status": "success", "cached": true, "fetchedAt": "...", "data": { ... } }
+
+# 3. Poll the job until it completes (use the jobId from step 2)
+curl https://api.santoshdev.win/api/v1/profile/status/<jobId> \
+  -H "x-api-key: YOUR_API_KEY"
+```
+
+Example completed response (trimmed):
+```json
+{
+  "status": "success",
+  "data": {
+    "name": "Santosh Kumar",
+    "headline": "Software Engineer | Scalable Backend Systems (Node.js, TypeScript, Go) | ...",
+    "location": "Noida, Uttar Pradesh, India",
+    "about": "Software Engineer focused on high-performance backend systems and distributed architecture...",
+    "profileImageUrl": "https://media.licdn.com/dms/image/v2/...",
+    "experience": [
+      {
+        "title": "Software Engineer",
+        "company": "Indorise Technologies Private Limited",
+        "duration": "8/2025 - Present",
+        "description": "Building SecureConnect, an on-demand security-personnel marketplace..."
+      }
+    ],
+    "education": [
+      { "school": "Giani Zail Singh College of Engineering & Technology, Bathinda", "degree": "Bachelor of Technology - BTech", "years": "9/2020 - 7/2024" }
+    ],
+    "skills": ["Distributed Systems", "Redis", "Amazon Web Services (AWS)", "..."],
+    "certifications": ["Agentic AI Engineering"],
+    "languages": ["Hindi", "English"],
+    "sourceUrl": "https://www.linkedin.com/in/santoshkum",
+    "fetchedAt": "2026-08-27T19:00:26.409Z"
+  }
+}
+```
+
 ## Setup
 
 ```bash
@@ -188,12 +245,12 @@ scrape in the background and returns a `jobId` to poll via
   complete the profile itself is.** A sparsely-filled profile will
   legitimately return empty arrays for `experience`, `skills`,
   `certifications`, and `languages` — this isn't always a parsing gap.
-- **The `Skill`/`Certification`/`Language` entity extraction is inferred
-  from the `$type`-suffix pattern confirmed for `Position`/`Education`,
-  not independently verified against a live profile that has that data
-  populated.** If those fields come back empty on a profile you know has
-  them, the `$type` string for that entity may need adjusting in
-  `normalizer.service.ts`.
+- **`Skill`/`Certification`/`Language` extraction uses a `$type`-suffix
+  match**, the same pattern confirmed for `Position`/`Education` — verified
+  end-to-end against a real, richly-populated profile (see the example
+  response above). If a field ever comes back empty on a profile you know
+  has that data, the `$type` string for that entity may have changed and
+  would need adjusting in `normalizer.service.ts`.
 - **No guarantee of long-term stability.** This is exactly what happened
   during development — LinkedIn had already retired the endpoint this
   project originally targeted. Internal API paths, `decorationId` values,
