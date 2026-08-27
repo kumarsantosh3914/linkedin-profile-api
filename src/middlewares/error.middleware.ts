@@ -5,7 +5,8 @@ export const appErrorHandler = (err: AppError, req: Request, res: Response, next
     console.log("Error: ", err);
 
     res.status(err.statusCode).json({
-        success: false,
+        status: "error",
+        code: err.code ?? err.name,
         message: err.message,
     });
 }
@@ -13,8 +14,9 @@ export const appErrorHandler = (err: AppError, req: Request, res: Response, next
 export const genericErrorHandler = (err: AppError, req: Request, res: Response, next: NextFunction) => {
     console.log("Error: ", err);
 
-    res.status(err.statusCode).json({
-        success: false,
-        message: err.message,
+    res.status(err.statusCode || 500).json({
+        status: "error",
+        code: err.code ?? err.name ?? "INTERNAL_ERROR",
+        message: err.message ?? "Something went wrong",
     });
 }

@@ -7,6 +7,7 @@
  */
 export interface AppError extends Error {
     statusCode: number;
+    code?: string;
 }
 
 /**
@@ -40,11 +41,13 @@ export class BadRequestError implements AppError {
     statusCode: number;
     message: string;
     name: string;
+    code?: string;
 
-    constructor(message: string) {
+    constructor(message: string, code?: string) {
         this.statusCode = 400;
         this.message = message;
         this.name = "BadRequestError";
+        this.code = code;
     }
 }
 
@@ -130,7 +133,7 @@ export class ConflictError implements AppError {
 /**
  * Represents an error for unimplemented features (HTTP 501).
  * This error is typically used to indicate that a certain feature or method has not been implemented yet.
- * 
+ *
  * @class NotImplementedError
  * @implements(AppError)
  */
@@ -143,5 +146,48 @@ export class NotImplementedError implements AppError {
         this.statusCode = 501;
         this.message = message;
         this.name = "NotImplementedError";
+    }
+}
+
+/**
+ * Represents an expired/invalid LinkedIn session (HTTP 503).
+ * Raised by the LinkedIn client when a request is redirected to login
+ * or otherwise rejected due to a stale `li_at` / `JSESSIONID`.
+ *
+ * @class SessionExpiredError
+ * @implements(AppError)
+ */
+export class SessionExpiredError implements AppError {
+    statusCode: number;
+    message: string;
+    name: string;
+    code: string;
+
+    constructor(message: string = "LinkedIn session needs refresh") {
+        this.statusCode = 503;
+        this.message = message;
+        this.name = "SessionExpiredError";
+        this.code = "SESSION_EXPIRED";
+    }
+}
+
+/**
+ * Represents a failure to parse/normalize an unexpected LinkedIn response
+ * shape (HTTP 500).
+ *
+ * @class ParseError
+ * @implements(AppError)
+ */
+export class ParseError implements AppError {
+    statusCode: number;
+    message: string;
+    name: string;
+    code: string;
+
+    constructor(message: string) {
+        this.statusCode = 500;
+        this.message = message;
+        this.name = "ParseError";
+        this.code = "PARSE_ERROR";
     }
 }
