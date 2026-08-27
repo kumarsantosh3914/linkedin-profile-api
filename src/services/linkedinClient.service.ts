@@ -10,12 +10,14 @@ const client: AxiosInstance = axios.create({
     baseURL: "https://www.linkedin.com",
     timeout: 10_000,
     maxRedirects: 0,
-    validateStatus: (status) => status < 400,
+    validateStatus: (status) => status >= 200 && status < 300,
 });
 
 client.interceptors.request.use((config) => {
     config.headers.set("User-Agent", USER_AGENT);
     config.headers.set("x-restli-protocol-version", "2.0.0");
+    config.headers.set("x-li-lang", "en_US");
+    config.headers.set("accept", "application/vnd.linkedin.normalized+json+2.1");
     const authHeaders = getAuthHeaders();
     Object.entries(authHeaders).forEach(([key, value]) => config.headers.set(key, value));
     return config;
@@ -28,10 +30,12 @@ client.interceptors.response.use(
     },
     (error) => {
         const status = error?.response?.status;
-        const location = error?.response?.headers?.location as string | undefined;
-        const redirectedToLogin = typeof location === "string" && location.includes("/login");
+        // Voyager API calls should return 2xx directly; any redirect here
+        // (typically back to a login/checkpoint page, sometimes paired with
+        // Set-Cookie headers that delete li_at) means the session is dead.
+        const isRedirect = status >= 300 && status < 400;
 
-        if (status === 401 || status === 403 || redirectedToLogin) {
+        if (status === 401 || status === 403 || isRedirect) {
             markSessionExpired();
             logger.error("LinkedIn session rejected the request", { status });
             return Promise.reject(new SessionExpiredError());
@@ -43,10 +47,14 @@ client.interceptors.response.use(
 
 /**
  * Low-level GET against a LinkedIn Voyager API path (e.g.
- * `/voyager/api/identity/profiles/{publicId}/profileView`).
+ * `/voyager/api/identity/dash/profiles?q=memberIdentity&memberIdentity={slug}&decorationId=...`).
  * Single place to update if LinkedIn's request shape changes.
  */
 export const fetchLinkedInResource = async <T = unknown>(path: string): Promise<T> => {
-    const response = await client.get<T>(path);
-    return response.data;
+    const response = await client.get(path);
+    // LinkedIn's Content-Type (application/vnd.linkedin.normalized+json+2.1)
+    // doesn't end in the exact "+json" suffix axios auto-parses on, so it
+    // can arrive as a raw string here.
+    const data = response.data;
+    return (typeof data === "string" ? JSON.parse(data) : data) as T;
 };

@@ -16,9 +16,20 @@ export interface ScrapeResult {
 const MAX_RETRIES = 2;
 const RETRY_BASE_DELAY_MS = 500;
 
+const PROFILE_DECORATION_ID = "com.linkedin.voyager.dash.deco.identity.profile.FullProfileWithEntities-93";
+
 const publicIdFromUrl = (linkedinUrl: string): string => {
     const match = linkedinUrl.match(/linkedin\.com\/in\/([^/?#]+)/i);
     return match ? match[1] : linkedinUrl;
+};
+
+const profileFetchPath = (publicId: string): string => {
+    const params = new URLSearchParams({
+        q: "memberIdentity",
+        memberIdentity: publicId,
+        decorationId: PROFILE_DECORATION_ID,
+    });
+    return `/voyager/api/identity/dash/profiles?${params.toString()}`;
 };
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,7 +58,7 @@ export const scrapeAndPersistProfile = async (linkedinUrl: string): Promise<Scra
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
-            const raw = await fetchLinkedInResource(`/voyager/api/identity/profiles/${publicId}/profileView`);
+            const raw = await fetchLinkedInResource(profileFetchPath(publicId));
             const normalized = normalizeProfile(raw, linkedinUrl);
 
             const fetchedAt = new Date();

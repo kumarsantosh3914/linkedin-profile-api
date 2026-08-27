@@ -8,6 +8,7 @@ import { attachCorrelationIdMiddleware } from './middlewares/correlation.middlew
 import logger from './config/logger.config';
 import './config/redis.config';
 import { connectDB } from './config/db.config';
+import { healthHandler } from './controllers/health.controller';
 
 const app: Express = express();
 
@@ -16,6 +17,7 @@ app.use(express.json());
 
 // Regestering all the routers and their corresponding routes with out app server object.
 app.use(attachCorrelationIdMiddleware);
+app.get('/health', healthHandler);
 app.use('/api/v1', v1Router);
 app.use('/api/v2', v2Router);
 
